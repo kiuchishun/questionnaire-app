@@ -1,120 +1,117 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
 import './App.css'
 
+const SATISFACTION_LEVELS = [
+  { value: '1', label: '1 とても不満' },
+  { value: '2', label: '2 不満' },
+  { value: '3', label: '3 ふつう' },
+  { value: '4', label: '4 満足' },
+  { value: '5', label: '5 とても満足' },
+]
+
 function App() {
-  const [count, setCount] = useState(0)
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [satisfaction, setSatisfaction] = useState('')
+  const [comments, setComments] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    setSubmitted(true)
+  }
+
+  if (submitted) {
+    return (
+      <main className="survey">
+        <div className="survey-shell survey-shell--thanks" role="status">
+          <h1>回答ありがとうございました</h1>
+          <p>いただいた内容は今後のイベント改善に活用します。</p>
+        </div>
+      </main>
+    )
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
+    <main className="survey">
+      <div className="survey-shell">
+        <header className="survey-header">
+          <p className="survey-badge">アンケート</p>
+          <h1>イベントアンケート</h1>
+          <p className="survey-lead">
+            ご参加ありがとうございました。所要時間は約1分です。
           </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+        </header>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+        <form className="survey-form" onSubmit={handleSubmit}>
+        <div className="field">
+          <label htmlFor="name">お名前</label>
+          <input
+            id="name"
+            name="name"
+            type="text"
+            autoComplete="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            placeholder="山田 太郎"
+          />
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        <div className="field">
+          <label htmlFor="email">メールアドレス</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            inputMode="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            placeholder="you@example.com"
+          />
+        </div>
+
+        <fieldset className="field field-satisfaction">
+          <legend>満足度（5段階）</legend>
+          <div className="satisfaction-options">
+            {SATISFACTION_LEVELS.map(({ value, label }) => (
+              <label key={value} className="satisfaction-option">
+                <input
+                  type="radio"
+                  name="satisfaction"
+                  value={value}
+                  checked={satisfaction === value}
+                  onChange={() => setSatisfaction(value)}
+                  required
+                />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <div className="field">
+          <label htmlFor="comments">自由記述</label>
+          <textarea
+            id="comments"
+            name="comments"
+            rows={5}
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+            placeholder="ご感想・ご要望があればお書きください（任意）"
+          />
+        </div>
+
+        <div className="survey-actions">
+          <button type="submit" className="survey-submit">
+            送信する
+          </button>
+        </div>
+      </form>
+      </div>
+    </main>
   )
 }
 
