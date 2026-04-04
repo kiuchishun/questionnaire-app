@@ -1,11 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  adminLoginHint,
+  canAttemptAdminLogin,
+  closeAdminSession,
+  isAdminAuthenticated,
+  openAdminSession,
+  verifyAdminPassword,
+} from './adminAuth'
+import {
   STORAGE_KEY,
   clearAllResponses,
   listResponses,
   removeResponse,
 } from './responsesStorage'
-import { SATISFACTION_LEVELS, satisfactionLabel } from './surveyConstants'
+import {
+  SATISFACTION_LEVELS,
+  normalizeSatisfactionValue,
+  satisfactionLabel,
+  satisfactionOrdinal,
+} from './surveyConstants'
 
 const dateFmt = new Intl.DateTimeFormat('ja-JP', {
   dateStyle: 'medium',
@@ -23,12 +36,11 @@ function buildSatisfactionStats(items) {
   )
   const scores = []
   for (const r of items) {
-    const raw = r?.satisfaction
-    if (raw == null || raw === '') continue
-    const key = String(raw)
-    if (distribution[key] === undefined) continue
+    const key = normalizeSatisfactionValue(r?.satisfaction)
+    if (!key || distribution[key] === undefined) continue
     distribution[key] += 1
-    scores.push(Number(key))
+    const ord = satisfactionOrdinal(key)
+    if (Number.isFinite(ord)) scores.push(ord)
   }
   const maxCount = Math.max(0, ...Object.values(distribution))
   const scoredN = scores.length
@@ -53,14 +65,18 @@ function formatSubmittedAt(iso) {
 }
 
 export function AdminPage() {
+  const [authed, setAuthed] = useState(() => isAdminAuthenticated())
+  const [password, setPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
   const [items, setItems] = useState(() => listResponses())
 
   const stats = useMemo(() => buildSatisfactionStats(items), [items])
+  const loginHint = useMemo(() => adminLoginHint(), [])
 
   const chartDescription = useMemo(() => {
     if (items.length === 0) return '回答はまだありません。'
     return SATISFACTION_LEVELS.map(
-      (l) => `${l.label.replace(/^\d+\s*/, '')} ${stats.distribution[l.value]}件`,
+      (l) => `${l.label} ${stats.distribution[l.value]}件`,
     ).join('。')
   }, [items, stats])
 
@@ -89,47 +105,111 @@ export function AdminPage() {
     refresh()
   }
 
+  function handleLogout() {
+    closeAdminSession()
+    setAuthed(false)
+    setPassword('')
+    setLoginError('')
+  }
+
+  function handleLoginSubmit(e) {
+    e.preventDefault()
+    setLoginError('')
+    if (!canAttemptAdminLogin()) {
+      setLoginError('現在の設定ではログインできません。')
+      return
+    }
+    if (!verifyAdminPassword(password)) {
+      setLoginError('パスワードが正しくありません。')
+      return
+    }
+    openAdminSession()
+    setAuthed(true)
+    setPassword('')
+  }
+
+  if (!authed) {
+    return (
+      <main className="survey admin">
+        <div className="survey-shell admin-shell">
+          <header className="survey-header admin-header">
+            <p className="survey-badge">管理</p>
+            <h1>ログイン</h1>
+            <p className="survey-lead">
+              パスワードを入力して管理画面に入ります。タブを閉じると再度ログインが必要です。
+            </p>
+          </header>
+
+          <form className="survey-form" onSubmit={handleLoginSubmit}>
+            {loginHint ? <p className="admin-login-hint">{loginHint}</p> : null}
+            {!canAttemptAdminLogin() ? (
+              <p className="admin-login-error" role="alert">
+                環境変数 VITE_ADMIN_PASSWORD が未設定のため、本番ビルドではログインできません。
+              </p>
+            ) : null}
+            {loginError ? (
+              <p className="admin-login-error" role="alert">
+                {loginError}
+              </p>
+            ) : null}
+            <fieldset className="field">
+              <label htmlFor="admin-password">パスワード</label>
+              <input
+                id="admin-password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={!canAttemptAdminLogin()}
+                required
+              />
+            </fieldset>
+            <div className="survey-actions">
+              <button
+                type="submit"
+                className="survey-submit"
+                disabled={!canAttemptAdminLogin()}
+              >
+                ログイン
+              </button>
+            </div>
+          </form>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="survey admin">
-      <div className="survey-shell admin-shell">
-        <header className="survey-header admin-header">
-          <p className="survey-badge">管理</p>
-          <h1>回答一覧</h1>
-          <p className="survey-lead">
-            ブラウザに保存された回答を表示・削除できます。
-          </p>
-        </header>
-
-        <section
-          className="admin-dashboard"
-          aria-labelledby="admin-dashboard-heading"
-        >
-          <h2 id="admin-dashboard-heading" className="admin-dashboard-heading">
-            集計サマリー
-          </h2>
-          <div className="admin-summary-cards">
-            <article className="admin-summary-card">
-              <p className="admin-summary-label">回答数</p>
-              <p className="admin-summary-value">{stats.totalCount}</p>
-              <p className="admin-summary-unit">件</p>
-            </article>
-            <article className="admin-summary-card">
-              <p className="admin-summary-label">満足度の平均</p>
-              <p className="admin-summary-value">
+      <div className="survey-shell admin-shell admin-shell--bare">
+        <div className="admin-panels" aria-label="管理ダッシュボード">
+          <div className="admin-stats-top">
+            <article className="admin-panel-card admin-panel-card--stat">
+              <h2 className="admin-panel-heading">満足度平均</h2>
+              <p className="admin-summary-value admin-summary-value--in-card">
                 {stats.average != null ? scoreFmt.format(stats.average) : '—'}
               </p>
               {stats.average != null ? (
-                <p className="admin-summary-unit">/ 5.0</p>
+                <p className="admin-summary-unit">点</p>
               ) : stats.totalCount > 0 ? (
                 <p className="admin-summary-unit">
                   （満足度の有効データなし）
                 </p>
               ) : null}
             </article>
+
+            <article className="admin-panel-card admin-panel-card--stat">
+              <h2 className="admin-panel-heading">回答数</h2>
+              <p className="admin-summary-value admin-summary-value--in-card">
+                {stats.totalCount}
+              </p>
+              <p className="admin-summary-unit">件</p>
+            </article>
           </div>
 
-          <div className="admin-chart-panel">
-            <h3 className="admin-chart-heading">満足度の分布</h3>
+          <article className="admin-panel-card admin-panel-card--stat">
+            <h2 className="admin-panel-heading">満足度の分布</h2>
             <div
               className="admin-chart"
               role="img"
@@ -141,15 +221,15 @@ export function AdminPage() {
                   const pct =
                     stats.maxCount > 0 ? (count / stats.maxCount) * 100 : 0
                   return (
-                    <div key={value} className="admin-chart-col">
+                    <div key={value} className="admin-chart-row">
+                      <span className="admin-chart-label">{label}</span>
                       <div className="admin-chart-track">
                         <div
                           className="admin-chart-bar"
-                          style={{ height: `${pct}%` }}
+                          style={{ width: `${pct}%` }}
                           title={`${label}：${count}件`}
                         />
                       </div>
-                      <span className="admin-chart-score">{value}</span>
                       <span className="admin-chart-count" aria-hidden="true">
                         {count}
                       </span>
@@ -157,66 +237,77 @@ export function AdminPage() {
                   )
                 })}
               </div>
-              <p className="admin-chart-axis-label">満足度（1〜5）</p>
+              <p className="admin-chart-axis-label">
+                とても不満 → とても満足の順
+              </p>
             </div>
-          </div>
-        </section>
+          </article>
 
-        <div className="admin-toolbar">
-          <button
-            type="button"
-            className="admin-btn admin-btn--danger"
-            onClick={handleClearAll}
-            disabled={items.length === 0}
-          >
-            すべて削除
-          </button>
-        </div>
-
-        {items.length === 0 ? (
-          <p className="admin-empty">まだ回答がありません。</p>
-        ) : (
-          <ul className="admin-list">
-            {items.map((r) => (
-              <li key={r.id} className="admin-card">
-                <div className="admin-card-head">
-                  <time className="admin-time" dateTime={r.submittedAt}>
-                    {formatSubmittedAt(r.submittedAt)}
-                  </time>
-                  <button
-                    type="button"
-                    className="admin-btn admin-btn--ghost"
-                    onClick={() => handleDeleteOne(r.id)}
-                  >
-                    削除
-                  </button>
-                </div>
-                <dl className="admin-dl">
-                  <div>
-                    <dt>お名前</dt>
-                    <dd>{r.name}</dd>
-                  </div>
-                  <div>
-                    <dt>メール</dt>
-                    <dd>
-                      <a href={`mailto:${r.email}`}>{r.email}</a>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>満足度</dt>
-                    <dd>{satisfactionLabel(r.satisfaction)}</dd>
-                  </div>
-                  {r.comments ? (
-                    <div className="admin-comments">
-                      <dt>自由記述</dt>
-                      <dd>{r.comments}</dd>
+          <article className="admin-panel-card admin-panel-card--list">
+            <div className="admin-panel-list-head">
+              <h2 className="admin-panel-heading">回答一覧</h2>
+              <div className="admin-panel-list-actions">
+                <button
+                  type="button"
+                  className="admin-btn admin-btn--danger"
+                  onClick={handleClearAll}
+                  disabled={items.length === 0}
+                >
+                  全削除
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn admin-btn--ghost"
+                  onClick={handleLogout}
+                >
+                  ログアウト
+                </button>
+              </div>
+            </div>
+            {items.length === 0 ? (
+              <p className="admin-empty admin-empty--in-card">
+                まだ回答がありません。
+              </p>
+            ) : (
+              <ul className="admin-response-cards">
+                {items.map((r) => (
+                  <li key={r.id} className="admin-response-card">
+                    <div className="admin-response-card__main">
+                      <p className="admin-response-card__name">
+                        {r.name?.trim() ? r.name : '—'}
+                      </p>
+                      <p className="admin-response-card__email">
+                        {r.email?.trim() ? (
+                          <a href={`mailto:${r.email}`}>{r.email}</a>
+                        ) : (
+                          '—'
+                        )}
+                      </p>
+                      <p className="admin-response-card__time">
+                        <time dateTime={r.submittedAt}>
+                          {formatSubmittedAt(r.submittedAt)}
+                        </time>
+                      </p>
+                      <p className="admin-response-card__satisfaction">
+                        {satisfactionLabel(r.satisfaction)}
+                      </p>
                     </div>
-                  ) : null}
-                </dl>
-              </li>
-            ))}
-          </ul>
-        )}
+                    <div className="admin-response-card__actions">
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn--ghost"
+                        aria-label="この回答を削除"
+                        onClick={() => handleDeleteOne(r.id)}
+                      >
+                        削除
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </article>
+        </div>
       </div>
     </main>
   )
