@@ -1,46 +1,47 @@
 import { useState } from 'react'
+import type { FormEvent } from 'react'
 import {
   SATISFACTION_LEVELS,
   isLowSatisfaction,
   normalizeSatisfactionValue,
   satisfactionLabel,
+  type SatisfactionValue,
 } from './surveyConstants'
 import { addResponse } from './responsesStorage'
+
+type Phase = 'form' | 'confirm'
 
 export function SurveyPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [satisfaction, setSatisfaction] = useState('')
+  const [satisfaction, setSatisfaction] = useState<SatisfactionValue | ''>('')
   const [improvementNotes, setImprovementNotes] = useState('')
   const [comments, setComments] = useState('')
-  const [phase, setPhase] = useState('form')
+  const [phase, setPhase] = useState<Phase>('form')
   const [submitted, setSubmitted] = useState(false)
 
-  function setSatisfactionValue(value) {
+  function setSatisfactionValue(value: SatisfactionValue) {
     setSatisfaction(value)
     if (!isLowSatisfaction(value)) setImprovementNotes('')
   }
 
-  function handleFormSubmit(e) {
+  function handleFormSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!e.currentTarget.reportValidity()) return
     setPhase('confirm')
   }
 
   function handleConfirmSend() {
-    if (
-      !name.trim() ||
-      !email.trim() ||
-      !normalizeSatisfactionValue(satisfaction)
-    ) {
+    if (!name.trim() || !email.trim() || !normalizeSatisfactionValue(satisfaction)) {
       setPhase('form')
       return
     }
-    const payload = { name, email, satisfaction, comments }
+    const payload = { name, email, satisfaction, comments } as const
     if (isLowSatisfaction(satisfaction)) {
-      payload.improvementNotes = improvementNotes
+      addResponse({ ...payload, improvementNotes })
+    } else {
+      addResponse(payload)
     }
-    addResponse(payload)
     setSubmitted(true)
   }
 
@@ -84,11 +85,7 @@ export function SurveyPage() {
               {isLowSatisfaction(satisfaction) ? (
                 <div>
                   <dt>改善してほしい点</dt>
-                  <dd>
-                    {improvementNotes.trim()
-                      ? improvementNotes
-                      : '（未入力）'}
-                  </dd>
+                  <dd>{improvementNotes.trim() ? improvementNotes : '（未入力）'}</dd>
                 </div>
               ) : null}
               {comments.trim() ? (

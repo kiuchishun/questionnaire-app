@@ -1,7 +1,7 @@
 import { NavLink, Route, Routes } from 'react-router-dom'
 import './App.css'
-import { AdminPage } from './AdminPage.jsx'
-import { SurveyPage } from './SurveyPage.jsx'
+import { AdminPage } from './AdminPage'
+import { SurveyPage } from './SurveyPage'
 
 function App() {
   return (

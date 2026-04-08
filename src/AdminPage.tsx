@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 import {
   adminLoginHint,
   canAttemptAdminLogin,
@@ -12,12 +13,14 @@ import {
   clearAllResponses,
   listResponses,
   removeResponse,
+  type SurveyResponse,
 } from './responsesStorage'
 import {
   SATISFACTION_LEVELS,
   normalizeSatisfactionValue,
   satisfactionLabel,
   satisfactionOrdinal,
+  type SatisfactionValue,
 } from './surveyConstants'
 
 const dateFmt = new Intl.DateTimeFormat('ja-JP', {
@@ -30,11 +33,13 @@ const scoreFmt = new Intl.NumberFormat('ja-JP', {
   maximumFractionDigits: 1,
 })
 
-function buildSatisfactionStats(items) {
+type SatisfactionDistribution = Record<SatisfactionValue, number>
+
+function buildSatisfactionStats(items: SurveyResponse[]) {
   const distribution = Object.fromEntries(
     SATISFACTION_LEVELS.map((l) => [l.value, 0]),
-  )
-  const scores = []
+  ) as SatisfactionDistribution
+  const scores: number[] = []
   for (const r of items) {
     const key = normalizeSatisfactionValue(r?.satisfaction)
     if (!key || distribution[key] === undefined) continue
@@ -44,10 +49,7 @@ function buildSatisfactionStats(items) {
   }
   const maxCount = Math.max(0, ...Object.values(distribution))
   const scoredN = scores.length
-  const average =
-    scoredN > 0
-      ? scores.reduce((a, b) => a + b, 0) / scoredN
-      : null
+  const average = scoredN > 0 ? scores.reduce((a, b) => a + b, 0) / scoredN : null
   return {
     totalCount: items.length,
     average,
@@ -56,7 +58,7 @@ function buildSatisfactionStats(items) {
   }
 }
 
-function formatSubmittedAt(iso) {
+function formatSubmittedAt(iso: string): string {
   try {
     return dateFmt.format(new Date(iso))
   } catch {
@@ -68,7 +70,7 @@ export function AdminPage() {
   const [authed, setAuthed] = useState(() => isAdminAuthenticated())
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
-  const [items, setItems] = useState(() => listResponses())
+  const [items, setItems] = useState<SurveyResponse[]>(() => listResponses())
 
   const stats = useMemo(() => buildSatisfactionStats(items), [items])
   const loginHint = useMemo(() => adminLoginHint(), [])
@@ -85,14 +87,14 @@ export function AdminPage() {
   }, [])
 
   useEffect(() => {
-    const onStorage = (e) => {
+    const onStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY || e.key === null) refresh()
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [refresh])
 
-  function handleDeleteOne(id) {
+  function handleDeleteOne(id: string) {
     if (!window.confirm('この回答を削除しますか？')) return
     removeResponse(id)
     refresh()
@@ -112,7 +114,7 @@ export function AdminPage() {
     setLoginError('')
   }
 
-  function handleLoginSubmit(e) {
+  function handleLoginSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoginError('')
     if (!canAttemptAdminLogin()) {
@@ -193,9 +195,7 @@ export function AdminPage() {
               {stats.average != null ? (
                 <p className="admin-summary-unit">点</p>
               ) : stats.totalCount > 0 ? (
-                <p className="admin-summary-unit">
-                  （満足度の有効データなし）
-                </p>
+                <p className="admin-summary-unit">（満足度の有効データなし）</p>
               ) : null}
             </article>
 
@@ -218,8 +218,7 @@ export function AdminPage() {
               <div className="admin-chart-bars">
                 {SATISFACTION_LEVELS.map(({ value, label }) => {
                   const count = stats.distribution[value]
-                  const pct =
-                    stats.maxCount > 0 ? (count / stats.maxCount) * 100 : 0
+                  const pct = stats.maxCount > 0 ? (count / stats.maxCount) * 100 : 0
                   return (
                     <div key={value} className="admin-chart-row">
                       <span className="admin-chart-label">{label}</span>
@@ -265,9 +264,7 @@ export function AdminPage() {
               </div>
             </div>
             {items.length === 0 ? (
-              <p className="admin-empty admin-empty--in-card">
-                まだ回答がありません。
-              </p>
+              <p className="admin-empty admin-empty--in-card">まだ回答がありません。</p>
             ) : (
               <ul className="admin-response-cards">
                 {items.map((r) => (
