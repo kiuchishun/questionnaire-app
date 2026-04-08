@@ -95,7 +95,6 @@ export function AdminPage() {
   }, [refresh])
 
   function handleDeleteOne(id: string) {
-    if (!window.confirm('この回答を削除しますか？')) return
     removeResponse(id)
     refresh()
   }
