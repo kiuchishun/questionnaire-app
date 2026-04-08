@@ -1,48 +1,52 @@
-import { useState } from 'react'
-import type { FormEvent } from 'react'
+import { useState } from "react";
+import type { FormEvent } from "react";
 import {
   SATISFACTION_LEVELS,
   isLowSatisfaction,
   normalizeSatisfactionValue,
   satisfactionLabel,
   type SatisfactionValue,
-} from './surveyConstants'
-import { addResponse } from './responsesStorage'
+} from "./surveyConstants";
+import { addResponse } from "./responsesStorage";
 
-type Phase = 'form' | 'confirm'
+type Phase = "form" | "confirm";
 
 export function SurveyPage() {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [satisfaction, setSatisfaction] = useState<SatisfactionValue | ''>('')
-  const [improvementNotes, setImprovementNotes] = useState('')
-  const [comments, setComments] = useState('')
-  const [phase, setPhase] = useState<Phase>('form')
-  const [submitted, setSubmitted] = useState(false)
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [satisfaction, setSatisfaction] = useState<SatisfactionValue | "">("");
+  const [improvementNotes, setImprovementNotes] = useState("");
+  const [comments, setComments] = useState("");
+  const [phase, setPhase] = useState<Phase>("form");
+  const [submitted, setSubmitted] = useState(false);
 
   function setSatisfactionValue(value: SatisfactionValue) {
-    setSatisfaction(value)
-    if (!isLowSatisfaction(value)) setImprovementNotes('')
+    setSatisfaction(value);
+    if (!isLowSatisfaction(value)) setImprovementNotes("");
   }
 
   function handleFormSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (!e.currentTarget.reportValidity()) return
-    setPhase('confirm')
+    e.preventDefault();
+    if (!e.currentTarget.reportValidity()) return;
+    setPhase("confirm");
   }
 
   function handleConfirmSend() {
-    if (!name.trim() || !email.trim() || !normalizeSatisfactionValue(satisfaction)) {
-      setPhase('form')
-      return
+    if (
+      !name.trim() ||
+      !email.trim() ||
+      !normalizeSatisfactionValue(satisfaction)
+    ) {
+      setPhase("form");
+      return;
     }
-    const payload = { name, email, satisfaction, comments } as const
+    const payload = { name, email, satisfaction, comments } as const;
     if (isLowSatisfaction(satisfaction)) {
-      addResponse({ ...payload, improvementNotes })
+      addResponse({ ...payload, improvementNotes });
     } else {
-      addResponse(payload)
+      addResponse(payload);
     }
-    setSubmitted(true)
+    setSubmitted(true);
   }
 
   if (submitted) {
@@ -53,10 +57,10 @@ export function SurveyPage() {
           <p>いただいた内容は今後のイベント改善に活用します。</p>
         </div>
       </main>
-    )
+    );
   }
 
-  if (phase === 'confirm') {
+  if (phase === "confirm") {
     return (
       <main className="survey">
         <div className="survey-shell">
@@ -85,7 +89,9 @@ export function SurveyPage() {
               {isLowSatisfaction(satisfaction) ? (
                 <div>
                   <dt>改善してほしい点</dt>
-                  <dd>{improvementNotes.trim() ? improvementNotes : '（未入力）'}</dd>
+                  <dd>
+                    {improvementNotes.trim() ? improvementNotes : "（未入力）"}
+                  </dd>
                 </div>
               ) : null}
               {comments.trim() ? (
@@ -105,7 +111,7 @@ export function SurveyPage() {
               <button
                 type="button"
                 className="survey-btn survey-btn--secondary"
-                onClick={() => setPhase('form')}
+                onClick={() => setPhase("form")}
               >
                 戻って修正する
               </button>
@@ -120,7 +126,7 @@ export function SurveyPage() {
           </div>
         </div>
       </main>
-    )
+    );
   }
 
   return (
@@ -208,8 +214,8 @@ export function SurveyPage() {
                   aria-checked={satisfaction === value}
                   className={
                     satisfaction === value
-                      ? 'satisfaction-option satisfaction-option--selected'
-                      : 'satisfaction-option'
+                      ? "satisfaction-option satisfaction-option--selected"
+                      : "satisfaction-option"
                   }
                   onClick={() => setSatisfactionValue(value)}
                 >
@@ -253,5 +259,5 @@ export function SurveyPage() {
         </form>
       </div>
     </main>
-  )
+  );
 }

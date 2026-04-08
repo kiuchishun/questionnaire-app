@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import {
   adminLoginHint,
   canAttemptAdminLogin,
@@ -7,126 +7,129 @@ import {
   isAdminAuthenticated,
   openAdminSession,
   verifyAdminPassword,
-} from './adminAuth'
+} from "./adminAuth";
 import {
   STORAGE_KEY,
   clearAllResponses,
   listResponses,
   removeResponse,
   type SurveyResponse,
-} from './responsesStorage'
+} from "./responsesStorage";
 import {
   SATISFACTION_LEVELS,
   normalizeSatisfactionValue,
   satisfactionLabel,
   satisfactionOrdinal,
   type SatisfactionValue,
-} from './surveyConstants'
+} from "./surveyConstants";
 
-const dateFmt = new Intl.DateTimeFormat('ja-JP', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-})
+const dateFmt = new Intl.DateTimeFormat("ja-JP", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
 
-const scoreFmt = new Intl.NumberFormat('ja-JP', {
+const scoreFmt = new Intl.NumberFormat("ja-JP", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
-})
+});
 
-type SatisfactionDistribution = Record<SatisfactionValue, number>
+type SatisfactionDistribution = Record<SatisfactionValue, number>;
 
 function buildSatisfactionStats(items: SurveyResponse[]) {
   const distribution = Object.fromEntries(
     SATISFACTION_LEVELS.map((l) => [l.value, 0]),
-  ) as SatisfactionDistribution
-  const scores: number[] = []
+  ) as SatisfactionDistribution;
+  const scores: number[] = [];
   for (const r of items) {
-    const key = normalizeSatisfactionValue(r?.satisfaction)
-    if (!key || distribution[key] === undefined) continue
-    distribution[key] += 1
-    const ord = satisfactionOrdinal(key)
-    if (Number.isFinite(ord)) scores.push(ord)
+    const key = normalizeSatisfactionValue(r?.satisfaction);
+    if (!key || distribution[key] === undefined) continue;
+    distribution[key] += 1;
+    const ord = satisfactionOrdinal(key);
+    if (Number.isFinite(ord)) scores.push(ord);
   }
-  const maxCount = Math.max(0, ...Object.values(distribution))
-  const scoredN = scores.length
-  const average = scoredN > 0 ? scores.reduce((a, b) => a + b, 0) / scoredN : null
+  const maxCount = Math.max(0, ...Object.values(distribution));
+  const scoredN = scores.length;
+  const average =
+    scoredN > 0 ? scores.reduce((a, b) => a + b, 0) / scoredN : null;
   return {
     totalCount: items.length,
     average,
     distribution,
     maxCount,
-  }
+  };
 }
 
 function formatSubmittedAt(iso: string): string {
   try {
-    return dateFmt.format(new Date(iso))
+    return dateFmt.format(new Date(iso));
   } catch {
-    return iso
+    return iso;
   }
 }
 
 export function AdminPage() {
-  const [authed, setAuthed] = useState(() => isAdminAuthenticated())
-  const [password, setPassword] = useState('')
-  const [loginError, setLoginError] = useState('')
-  const [items, setItems] = useState<SurveyResponse[]>(() => listResponses())
+  const [authed, setAuthed] = useState(() => isAdminAuthenticated());
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [items, setItems] = useState<SurveyResponse[]>(() => listResponses());
 
-  const stats = useMemo(() => buildSatisfactionStats(items), [items])
-  const loginHint = useMemo(() => adminLoginHint(), [])
+  const stats = useMemo(() => buildSatisfactionStats(items), [items]);
+  const loginHint = useMemo(() => adminLoginHint(), []);
 
   const chartDescription = useMemo(() => {
-    if (items.length === 0) return '回答はまだありません。'
+    if (items.length === 0) return "回答はまだありません。";
     return SATISFACTION_LEVELS.map(
       (l) => `${l.label} ${stats.distribution[l.value]}件`,
-    ).join('。')
-  }, [items, stats])
+    ).join("。");
+  }, [items, stats]);
 
   const refresh = useCallback(() => {
-    setItems(listResponses())
-  }, [])
+    setItems(listResponses());
+  }, []);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY || e.key === null) refresh()
-    }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [refresh])
+      if (e.key === STORAGE_KEY || e.key === null) refresh();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [refresh]);
 
   function handleDeleteOne(id: string) {
-    removeResponse(id)
-    refresh()
+    removeResponse(id);
+    refresh();
   }
 
   function handleClearAll() {
-    if (!window.confirm('すべての回答を削除しますか？この操作は取り消せません。'))
-      return
-    clearAllResponses()
-    refresh()
+    if (
+      !window.confirm("すべての回答を削除しますか？この操作は取り消せません。")
+    )
+      return;
+    clearAllResponses();
+    refresh();
   }
 
   function handleLogout() {
-    closeAdminSession()
-    setAuthed(false)
-    setPassword('')
-    setLoginError('')
+    closeAdminSession();
+    setAuthed(false);
+    setPassword("");
+    setLoginError("");
   }
 
   function handleLoginSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoginError('')
+    e.preventDefault();
+    setLoginError("");
     if (!canAttemptAdminLogin()) {
-      setLoginError('現在の設定ではログインできません。')
-      return
+      setLoginError("現在の設定ではログインできません。");
+      return;
     }
     if (!verifyAdminPassword(password)) {
-      setLoginError('パスワードが正しくありません。')
-      return
+      setLoginError("パスワードが正しくありません。");
+      return;
     }
-    openAdminSession()
-    setAuthed(true)
-    setPassword('')
+    openAdminSession();
+    setAuthed(true);
+    setPassword("");
   }
 
   if (!authed) {
@@ -138,6 +141,8 @@ export function AdminPage() {
             <h1>ログイン</h1>
             <p className="survey-lead">
               パスワードを入力して管理画面に入ります。タブを閉じると再度ログインが必要です。
+              <br />
+              開発中のためパスワードは1234です
             </p>
           </header>
 
@@ -145,7 +150,8 @@ export function AdminPage() {
             {loginHint ? <p className="admin-login-hint">{loginHint}</p> : null}
             {!canAttemptAdminLogin() ? (
               <p className="admin-login-error" role="alert">
-                環境変数 VITE_ADMIN_PASSWORD が未設定のため、本番ビルドではログインできません。
+                環境変数 VITE_ADMIN_PASSWORD
+                が未設定のため、本番ビルドではログインできません。
               </p>
             ) : null}
             {loginError ? (
@@ -178,7 +184,7 @@ export function AdminPage() {
           </form>
         </div>
       </main>
-    )
+    );
   }
 
   return (
@@ -189,7 +195,7 @@ export function AdminPage() {
             <article className="admin-panel-card admin-panel-card--stat">
               <h2 className="admin-panel-heading">満足度平均</h2>
               <p className="admin-summary-value admin-summary-value--in-card">
-                {stats.average != null ? scoreFmt.format(stats.average) : '—'}
+                {stats.average != null ? scoreFmt.format(stats.average) : "—"}
               </p>
               {stats.average != null ? (
                 <p className="admin-summary-unit">点</p>
@@ -216,8 +222,9 @@ export function AdminPage() {
             >
               <div className="admin-chart-bars">
                 {SATISFACTION_LEVELS.map(({ value, label }) => {
-                  const count = stats.distribution[value]
-                  const pct = stats.maxCount > 0 ? (count / stats.maxCount) * 100 : 0
+                  const count = stats.distribution[value];
+                  const pct =
+                    stats.maxCount > 0 ? (count / stats.maxCount) * 100 : 0;
                   return (
                     <div key={value} className="admin-chart-row">
                       <span className="admin-chart-label">{label}</span>
@@ -232,7 +239,7 @@ export function AdminPage() {
                         {count}
                       </span>
                     </div>
-                  )
+                  );
                 })}
               </div>
               <p className="admin-chart-axis-label">
@@ -263,20 +270,22 @@ export function AdminPage() {
               </div>
             </div>
             {items.length === 0 ? (
-              <p className="admin-empty admin-empty--in-card">まだ回答がありません。</p>
+              <p className="admin-empty admin-empty--in-card">
+                まだ回答がありません。
+              </p>
             ) : (
               <ul className="admin-response-cards">
                 {items.map((r) => (
                   <li key={r.id} className="admin-response-card">
                     <div className="admin-response-card__main">
                       <p className="admin-response-card__name">
-                        {r.name?.trim() ? r.name : '—'}
+                        {r.name?.trim() ? r.name : "—"}
                       </p>
                       <p className="admin-response-card__email">
                         {r.email?.trim() ? (
                           <a href={`mailto:${r.email}`}>{r.email}</a>
                         ) : (
-                          '—'
+                          "—"
                         )}
                       </p>
                       <p className="admin-response-card__time">
@@ -306,5 +315,5 @@ export function AdminPage() {
         </div>
       </div>
     </main>
-  )
+  );
 }

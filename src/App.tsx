@@ -1,7 +1,7 @@
-import { NavLink, Route, Routes } from 'react-router-dom'
-import './App.css'
-import { AdminPage } from './AdminPage'
-import { SurveyPage } from './SurveyPage'
+import { NavLink, Route, Routes } from "react-router-dom";
+import "./App.css";
+import { AdminPage } from "./AdminPage";
+import { SurveyPage } from "./SurveyPage";
 
 function App() {
   return (
@@ -11,7 +11,7 @@ function App() {
           to="/"
           end
           className={({ isActive }) =>
-            isActive ? 'nav-link nav-link--active' : 'nav-link'
+            isActive ? "nav-link nav-link--active" : "nav-link"
           }
         >
           アンケート
@@ -19,7 +19,7 @@ function App() {
         <NavLink
           to="/admin"
           className={({ isActive }) =>
-            isActive ? 'nav-link nav-link--active' : 'nav-link'
+            isActive ? "nav-link nav-link--active" : "nav-link"
           }
         >
           管理画面
@@ -30,7 +30,7 @@ function App() {
         <Route path="/admin" element={<AdminPage />} />
       </Routes>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
