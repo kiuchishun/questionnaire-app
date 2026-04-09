@@ -60,7 +60,7 @@ npm run dev
 ```bash
 npm run build
 npm run preview
-`
+```
 
 ## 管理画面の認証設定
 
